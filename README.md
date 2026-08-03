@@ -282,9 +282,19 @@ Everything is adjustable **live from the page** — no restart, no config edit:
   instrument keys.
 
 Defaults and the starter watchlist live under `momentum:` in `config.yaml`; the
-page polls `/api/momentum` every `web.refresh_seconds`. This strategy currently
-produces **signals + full screening transparency** (it does not place orders
-through the live engine — the Ichimoku engine remains the order path).
+page polls `/api/momentum` every `web.refresh_seconds`.
+
+**Trading the picks (paper & live).** With `momentum.trade.with_ichimoku: true`
+(default) the **Ichimoku trading engine trades the locked top-N stocks** for the
+rest of the day: it runs the Ichimoku 1m/5m pipeline on each picked stock and
+buys an ITM option on a signal, exactly like it does for indices. As scans change
+the picks, new stocks are warmed up and start trading, while a stock that drops
+out of the top-N is **held only to manage its exit** (no new entries) if it still
+has an open position, otherwise dropped. With `momentum.trade.no_index: true`
+(default) the engine **does not trade the config indices** — they stay signal-only
+on `/ichimoku`. Start/stop the engine and pick paper vs live from the Ichimoku
+dashboard's engine bar (live still requires typing `LIVE` to confirm). Everything
+else — risk caps, entry cutoff, square-off, reconciliation — applies unchanged.
 
 ### Other commands
 

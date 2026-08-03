@@ -64,7 +64,21 @@ def cmd_run(args: argparse.Namespace) -> None:
     apply_overrides(cfg)
     resolve_index_keys(cfg.instruments)
     api = UpstoxAPI(auth.load_token())
-    Engine(cfg, api).run()
+
+    momentum = None
+    if cfg.mom_trade_with_ichimoku:
+        # the engine trades the momentum scanner's picks — run the scanner too
+        import threading
+
+        from .momentum_web import MomentumService
+
+        momentum = MomentumService(cfg, api)
+        momentum.scan()  # initial pick set for the current time
+        threading.Thread(
+            target=momentum.run_scheduler, args=(threading.Event(),), daemon=True,
+            name="momentum-scheduler",
+        ).start()
+    Engine(cfg, api, momentum=momentum).run()
 
 
 def cmd_web(args: argparse.Namespace) -> None:

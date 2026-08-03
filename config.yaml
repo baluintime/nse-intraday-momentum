@@ -143,6 +143,14 @@ momentum:
     top_n: 3
     scan_times: ["09:15", "13:00"]   # IST — morning open + post-lunch
     limit: 0                         # cap symbols scanned (0 = whole universe)
+  trade:
+    # When on, the Ichimoku trading engine trades the scanner's locked top-N
+    # STOCKS (buys ITM options on Ichimoku 1m/5m signals), adding new picks as
+    # scans change them and holding a dropped pick only to manage its exit.
+    with_ichimoku: true
+    # Do not trade the config `instruments` indices below (they stay signal-only
+    # on the /ichimoku dashboard). Set false to trade indices as well.
+    no_index: true
   screening:
     min_gap_pct: 1.5          # |Gap %| >= 1.5
     min_rvol: 3.0             # opening-window RVOL >= 3.0

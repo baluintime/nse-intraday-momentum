@@ -142,6 +142,12 @@ class Config:
     mom_top_n: int = 3
     mom_scan_times: list[time] = field(default_factory=lambda: [time(9, 15), time(13, 0)])
     mom_universe_limit: int = 0  # cap symbols scanned (0 = whole universe)
+    # Live/paper trading of the picks: when on, the Ichimoku engine trades the
+    # momentum scanner's locked top-N stocks (ITM options on Ichimoku signals),
+    # adding new picks mid-session and holding dropped picks only to manage their
+    # exit. no_index=True means the engine does not trade the config indices.
+    mom_trade_with_ichimoku: bool = True
+    mom_no_index_trade: bool = True
 
     @property
     def enabled_instruments(self) -> list[IndexConfig]:
@@ -310,6 +316,9 @@ def load_config(path: str = "config.yaml") -> Config:
     cfg.mom_universe_limit = int(uni.get("limit", cfg.mom_universe_limit))
     if uni.get("scan_times"):
         cfg.mom_scan_times = [_parse_time(t, time(9, 15)) for t in uni.get("scan_times")]
+    mtrade = mom.get("trade", {}) or {}
+    cfg.mom_trade_with_ichimoku = bool(mtrade.get("with_ichimoku", cfg.mom_trade_with_ichimoku))
+    cfg.mom_no_index_trade = bool(mtrade.get("no_index", cfg.mom_no_index_trade))
     cfg.momentum_symbols = [
         MomentumSymbol(
             name=item["name"],

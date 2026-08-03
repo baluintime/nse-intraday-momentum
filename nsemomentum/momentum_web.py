@@ -319,6 +319,11 @@ class MomentumService:
             self._scanning = False
             self.invalidate()
 
+    def locked_symbols(self) -> list[MomentumSymbol]:
+        """The current locked top-N picks (a copy) — consumed by the trading
+        engine to decide which stocks to trade this session."""
+        return list(self._locked)
+
     def scan_async(self) -> bool:
         """Kick off a scan in a background thread. False if one is already running."""
         if self._scanning:

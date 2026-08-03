@@ -450,10 +450,11 @@ class TradingController:
     """Starts/stops the trading Engine in a background thread, switchable
     between paper and live mode from the dashboard."""
 
-    def __init__(self, cfg: Config, api: UpstoxAPI, token: str | None = None):
+    def __init__(self, cfg: Config, api: UpstoxAPI, token: str | None = None, momentum=None):
         self.base_cfg = cfg
         self.api = api
         self.token = token
+        self.momentum = momentum  # MomentumService, so the engine can trade its picks
         self._lock = threading.Lock()
         self._engine = None
         self._thread: threading.Thread | None = None
@@ -477,7 +478,7 @@ class TradingController:
             cfg.mode = mode
             api = UpstoxAPI(self.token) if self.token else self.api
             try:
-                engine = Engine(cfg, api)
+                engine = Engine(cfg, api, momentum=self.momentum)
             except Exception as exc:  # noqa: BLE001
                 self.last_error = f"{type(exc).__name__}: {exc}"
                 return False, self.last_error
@@ -665,12 +666,11 @@ class AuthManager:
 
 def create_app(cfg: Config, api: UpstoxAPI, token: str | None = None) -> Flask:
     app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), "templates"))
-    service = DashboardService(cfg, api)
-    controller = TradingController(cfg, api, token)
-    auth_mgr = AuthManager(api, controller)
-
     from .momentum_web import MomentumService
+    service = DashboardService(cfg, api)
     momentum = MomentumService(cfg, api)
+    controller = TradingController(cfg, api, token, momentum=momentum)
+    auth_mgr = AuthManager(api, controller)
 
     @app.get("/")
     @app.get("/momentum")

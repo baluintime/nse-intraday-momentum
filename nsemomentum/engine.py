@@ -45,6 +45,8 @@ class IndexRunner:
         self.pipelines: dict[int, Pipeline] = {
             tf: Pipeline(index.name, tf, sc) for tf in cfg.timeframes_minutes
         }
+        self.warmed = False        # historical/intraday warmup done for this runner
+        self.momentum_sourced = False  # created from a momentum top-N pick, not config
         # opening-range breakout gate (per index, per day)
         self.or_date = None  # type: ignore[assignment]
         self.or_high: float | None = None
@@ -79,7 +81,7 @@ class IndexRunner:
 
 
 class Engine:
-    def __init__(self, cfg: Config, api: UpstoxAPI):
+    def __init__(self, cfg: Config, api: UpstoxAPI, momentum=None):
         self.cfg = cfg
         self.api = api
         self.tz = get_zone(cfg.timezone)
@@ -89,10 +91,15 @@ class Engine:
         self.broker: BaseBroker = (
             LiveBroker(cfg, api) if cfg.mode == "live" else PaperBroker(cfg, api)
         )
-        self.runners = [
-            IndexRunner(ix, cfg, build_strategy_config(cfg, ix))
-            for ix in cfg.enabled_instruments
-        ]
+        # momentum-link: trade the scanner's locked top-N stocks via the Ichimoku
+        # pipeline. When on with no_index_trade, the config indices are not traded.
+        self.momentum = momentum if cfg.mom_trade_with_ichimoku else None
+        self._momentum_names: set[str] = set()
+        self.runners: list[IndexRunner] = []
+        self._runner_by_name: dict[str, IndexRunner] = {}
+        if not (self.momentum and cfg.mom_no_index_trade):
+            for ix in cfg.enabled_instruments:
+                self._add_runner(ix, momentum_sourced=False)
         self.trades_today: dict[str, int] = {}
         self._squared_off = False
         self._halted = False
@@ -117,7 +124,105 @@ class Engine:
                             "direction": s["direction"], "age_s": round(age)})
         return out
 
+    # -------------------------------------------------- runner management
+
+    def _add_runner(self, index: IndexConfig, momentum_sourced: bool) -> IndexRunner:
+        runner = IndexRunner(index, self.cfg, build_strategy_config(self.cfg, index))
+        runner.momentum_sourced = momentum_sourced
+        self.runners.append(runner)
+        self._runner_by_name[index.name] = runner
+        if momentum_sourced:
+            self._momentum_names.add(index.name)
+        return runner
+
+    def _remove_runner(self, name: str) -> None:
+        runner = self._runner_by_name.pop(name, None)
+        if runner is not None:
+            self.runners = [r for r in self.runners if r is not runner]
+        self._momentum_names.discard(name)
+
+    def _has_open_position(self, runner: IndexRunner) -> bool:
+        return any(self.broker.position(p.pipeline_id) is not None for p in runner.pipelines.values())
+
+    def sync_momentum_runners(self) -> None:
+        """Reconcile the tradeable runner set with the momentum scanner's current
+        locked top-N picks: add + warm up new picks, keep dropped picks only while
+        they hold a position (exit-only, no new entries), remove the rest."""
+        if self.momentum is None:
+            return
+        try:
+            picks = self.momentum.locked_symbols()
+        except Exception as exc:  # noqa: BLE001 - never let scanner state crash the loop
+            log.debug("could not read momentum picks: %s", exc)
+            return
+        desired = {s.name: s for s in picks}
+        for name, sym in desired.items():
+            runner = self._runner_by_name.get(name)
+            if runner is None:
+                ix = IndexConfig(name=sym.name, key=sym.key, options_available=True, trade_enabled=True)
+                runner = self._add_runner(ix, momentum_sourced=True)
+                self._warmup_runner(runner)
+                log.info("momentum: now trading %s (entered top-%d)", name, self.momentum.top_n)
+            elif runner.momentum_sourced and not runner.index.trade_enabled:
+                runner.index.trade_enabled = True  # re-entered the top-N
+        for name in list(self._momentum_names):
+            if name in desired:
+                continue
+            runner = self._runner_by_name.get(name)
+            if runner is None:
+                self._momentum_names.discard(name)
+            elif self._has_open_position(runner):
+                if runner.index.trade_enabled:
+                    runner.index.trade_enabled = False
+                    log.info("momentum: %s left top-%d — holding to manage exit (no new entries)", name, self.momentum.top_n)
+            else:
+                self._remove_runner(name)
+                log.info("momentum: %s left top-%d — dropped (no open position)", name, self.momentum.top_n)
+
     # ------------------------------------------------------------ warmup
+
+    def _warmup_runner(self, runner: IndexRunner) -> None:
+        now = self._now()
+        to_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        from_date = (now - timedelta(days=self.cfg.warmup_days)).strftime("%Y-%m-%d")
+        key = runner.index.key
+        rows: list[list] = []
+        try:
+            rows.extend(self.api.historical_candles(key, to_date, from_date))
+        except UpstoxError as exc:
+            log.warning("historical warmup failed for %s: %s", runner.index.name, exc)
+        try:
+            rows.extend(self.api.intraday_candles(key))
+        except UpstoxError as exc:
+            log.warning("intraday warmup failed for %s: %s", runner.index.name, exc)
+
+        # drop the in-progress candle: only intervals that have fully ended
+        cutoff = now.replace(second=0, microsecond=0)
+        candles = sorted(
+            (
+                c
+                for r in rows
+                if (c := Candle.from_upstox(r)).ts + timedelta(minutes=1) <= cutoff
+            ),
+            key=lambda c: c.ts,
+        )
+        new_1m: list[Candle] = []
+        for c in candles:
+            if runner.one_min.append(c):
+                new_1m.append(c)
+                runner.update_opening_range(c)
+        if 1 in runner.pipelines:
+            runner.pipelines[1].warmup(new_1m)
+        for tf, agg in runner.aggregators.items():
+            agg_candles = [done for c in new_1m if (done := agg.feed(c))]
+            runner.pipelines[tf].warmup(agg_candles)
+        runner.warmed = True
+        log.info(
+            "%s warmup: %d x 1m candles (%s)",
+            runner.index.name,
+            len(runner.one_min),
+            ", ".join(f"{tf}m series={len(p.series)}" for tf, p in runner.pipelines.items()),
+        )
 
     def warmup(self) -> None:
         if self.cfg.mode == "live":
@@ -128,47 +233,11 @@ class Engine:
                     log.warning("seeded %d untracked Upstox position(s) into the live book at startup", n)
             except Exception as exc:  # noqa: BLE001
                 log.warning("startup position seeding failed: %s", exc)
-        now = datetime.now(self.tz)
-        to_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
-        from_date = (now - timedelta(days=self.cfg.warmup_days)).strftime("%Y-%m-%d")
-        for runner in self.runners:
-            key = runner.index.key
-            rows: list[list] = []
-            try:
-                rows.extend(self.api.historical_candles(key, to_date, from_date))
-            except UpstoxError as exc:
-                log.warning("historical warmup failed for %s: %s", runner.index.name, exc)
-            try:
-                rows.extend(self.api.intraday_candles(key))
-            except UpstoxError as exc:
-                log.warning("intraday warmup failed for %s: %s", runner.index.name, exc)
-
-            # drop the in-progress candle: only intervals that have fully ended
-            cutoff = self._now().replace(second=0, microsecond=0)
-            candles = sorted(
-                (
-                    c
-                    for r in rows
-                    if (c := Candle.from_upstox(r)).ts + timedelta(minutes=1) <= cutoff
-                ),
-                key=lambda c: c.ts,
-            )
-            new_1m: list[Candle] = []
-            for c in candles:
-                if runner.one_min.append(c):
-                    new_1m.append(c)
-                    runner.update_opening_range(c)
-            if 1 in runner.pipelines:
-                runner.pipelines[1].warmup(new_1m)
-            for tf, agg in runner.aggregators.items():
-                agg_candles = [done for c in new_1m if (done := agg.feed(c))]
-                runner.pipelines[tf].warmup(agg_candles)
-            log.info(
-                "%s warmup: %d x 1m candles (%s)",
-                runner.index.name,
-                len(runner.one_min),
-                ", ".join(f"{tf}m series={len(p.series)}" for tf, p in runner.pipelines.items()),
-            )
+        # pull in the current momentum picks (these warm themselves as they are added)
+        self.sync_momentum_runners()
+        for runner in list(self.runners):
+            if not runner.warmed:
+                self._warmup_runner(runner)
 
     # ------------------------------------------------------------ session
 
@@ -183,7 +252,8 @@ class Engine:
         web dashboard). Stopping does NOT square off open positions."""
         if stop_event is not None:
             self._stop = stop_event
-        log.info("engine starting in %s mode with %d indices", self.cfg.mode.upper(), len(self.runners))
+        mode_desc = "momentum top-%d stocks" % self.momentum.top_n if self.momentum else f"{len(self.runners)} instruments"
+        log.info("engine starting in %s mode (%s)", self.cfg.mode.upper(), mode_desc)
         self.warmup()
         while not self._stop.is_set():
             now = self._now()
@@ -214,8 +284,10 @@ class Engine:
             self.square_off_all("session end")
 
     def poll_once(self) -> None:
-        """Fetch today's 1m candles for every index and process new completed ones."""
-        for runner in self.runners:
+        """Fetch today's 1m candles for every tradeable instrument and process new
+        completed ones. First reconcile the runner set with the momentum picks."""
+        self.sync_momentum_runners()
+        for runner in list(self.runners):
             try:
                 rows = self.api.intraday_candles(runner.index.key)
             except UpstoxError as exc:
