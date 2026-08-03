@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 from zoneinfo import ZoneInfoNotFoundError
 
-from onlyichu import tzutil
+from nsemomentum import tzutil
 
 
 def test_get_zone_normal():

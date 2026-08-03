@@ -1,4 +1,4 @@
-# OnlyIchu — Ichimoku Cloud options strategy on Upstox
+# NSE Momentum — Ichimoku Cloud options strategy on Upstox
 # mode: paper (simulated fills, real market data) | live (real orders on Upstox)
 mode: paper
 
@@ -114,7 +114,7 @@ live:
   trade_log: state/trades_live.csv
 
 # Index universe. `key` is the Upstox instrument key — verify any key with:
-#   python -m onlyichu instruments --search "smlcap"
+#   python -m nsemomentum instruments --search "smlcap"
 # options_available=false indices have no exchange-traded options; they are traded
 # synthetically at index level in paper mode and skipped in live mode.
 # min_cloud_thickness per index: the Kumo thickness gate is measured in that
@@ -137,7 +137,7 @@ momentum:
   # stock universe at each scan time, rank every stock by conviction, and lock the
   # top N candidates for the session — those are shown on the page and managed
   # (entry confirmation + Kijun-sen exit) until the next scan. The scheduler runs
-  # inside `python -m onlyichu web`; a "⟳ Scan F&O now" button triggers it on demand.
+  # inside `python -m nsemomentum web`; a "⟳ Scan F&O now" button triggers it on demand.
   universe:
     auto: true
     top_n: 3
@@ -170,7 +170,7 @@ momentum:
   # Watchlist of NSE F&O stocks. `key` is the Upstox equity instrument key;
   # `futures_key` (optional) is the near-month futures key that powers the ΔOI
   # build-up gate — without it the OI check shows as unavailable. Find keys with:
-  #   python -m onlyichu instruments --search "RELIANCE"
+  #   python -m nsemomentum instruments --search "RELIANCE"
   # Symbols are also addable/removable live from the page's "Watchlist" drawer.
   symbols:
     - name: RELIANCE

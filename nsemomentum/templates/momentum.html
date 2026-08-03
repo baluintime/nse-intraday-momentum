@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OnlyIchu — NSE Intraday Momentum</title>
+<title>NSE Momentum — Intraday F&amp;O Options</title>
 <style>
   :root {
     --bg0: #060913; --bg1: #0b1226; --bg2: #101a35;
@@ -199,15 +199,15 @@
 <div class="wrap">
   <header>
     <div class="brand">
-      <div class="logo">Iu</div>
+      <div class="logo">NM</div>
       <div>
-        <h1>NSE Intraday Momentum</h1>
+        <h1>NSE Momentum</h1>
         <small>Gap · RVOL · OI Build-Up · Ichimoku Kumo — 1m &amp; 5m</small>
       </div>
     </div>
     <nav style="display:flex; gap:8px;">
-      <a href="/">Ichimoku</a>
-      <a href="/momentum" class="active">Momentum</a>
+      <a href="/" class="active">Momentum</a>
+      <a href="/ichimoku">Ichimoku</a>
     </nav>
     <span id="market" class="pill"><span class="dot"></span><span id="market-txt">—</span></span>
     <div class="clock"><span id="clock">—</span><small id="date">—</small></div>
@@ -237,7 +237,7 @@
   <div class="connect" id="connect">
     <h3 style="font-size:15px; margin-bottom:4px;">Connect Upstox</h3>
     <p style="color:var(--muted); font-size:12.5px;">Momentum data needs a live Upstox session. Connect on the
-      <a href="/" style="color:var(--cyan)">Ichimoku dashboard</a>, or paste a token below.</p>
+      <a href="/ichimoku" style="color:var(--cyan)">Ichimoku dashboard</a>, or paste a token below.</p>
     <label style="display:block; font-size:11.5px; color:var(--muted); margin:12px 0 5px;">Access token</label>
     <div style="display:flex; gap:10px;">
       <input id="tok" type="text" placeholder="paste Upstox access token"

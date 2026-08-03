@@ -2,9 +2,9 @@
 
 from datetime import datetime, timedelta, timezone
 
-from onlyichu.broker import LiveBroker
-from onlyichu.config import Config, IndexConfig
-from onlyichu.engine import Engine
+from nsemomentum.broker import LiveBroker
+from nsemomentum.config import Config, IndexConfig
+from nsemomentum.engine import Engine
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -88,7 +88,7 @@ def test_engine_pauses_entries_on_mismatch(tmp_path):
 
 
 def test_paper_always_in_sync(tmp_path):
-    from onlyichu.broker import PaperBroker
+    from nsemomentum.broker import PaperBroker
 
     c = Config()
     c.mode = "paper"
@@ -100,5 +100,5 @@ def test_paper_always_in_sync(tmp_path):
 
 
 def _pos(pid, key, qty):
-    from onlyichu.broker import Position
+    from nsemomentum.broker import Position
     return Position(pid, key, key, qty, 100.0, datetime.now(IST).isoformat(), "LONG")

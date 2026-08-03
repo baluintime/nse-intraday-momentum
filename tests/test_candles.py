@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from onlyichu.candles import Candle, CandleSeries, TimeframeAggregator
+from nsemomentum.candles import Candle, CandleSeries, TimeframeAggregator
 
 IST = timezone(timedelta(hours=5, minutes=30))
 

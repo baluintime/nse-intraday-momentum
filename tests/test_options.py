@@ -2,8 +2,8 @@
 
 from datetime import date, timedelta
 
-from onlyichu.config import Config
-from onlyichu.options import OptionSelector
+from nsemomentum.config import Config
+from nsemomentum.options import OptionSelector
 
 # a future expiry so nearest_expiry() never filters it out as stale
 FUTURE_EXPIRY = (date.today() + timedelta(days=3)).isoformat()

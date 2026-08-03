@@ -1,4 +1,4 @@
-"""Configuration loading for OnlyIchu."""
+"""Configuration loading for NSE Momentum."""
 
 from __future__ import annotations
 
@@ -152,7 +152,7 @@ class Config:
         return [s for s in self.momentum_symbols if s.enabled]
 
     def momentum_config(self):
-        """Build a :class:`onlyichu.momentum.MomentumConfig` from these fields."""
+        """Build a :class:`nsemomentum.momentum.MomentumConfig` from these fields."""
         from .momentum import MomentumConfig
 
         return MomentumConfig(

@@ -2,7 +2,7 @@
 
 Upstox access tokens are valid for one trading day (expire ~3:30 AM IST the
 next day), so a fresh login is needed each morning — either via
-`python -m onlyichu login` (terminal) or the "Connect Upstox" button on the
+`python -m nsemomentum login` (terminal) or the "Connect Upstox" button on the
 web dashboard.
 
 App credentials (API key / secret / redirect URI) come from, in priority
@@ -21,7 +21,7 @@ from pathlib import Path
 import requests
 
 BASE_URL = "https://api.upstox.com"
-HOME = Path(os.environ.get("ONLYICHU_HOME", str(Path.home() / ".onlyichu")))
+HOME = Path(os.environ.get("NSEMOMENTUM_HOME", str(Path.home() / ".nsemomentum")))
 TOKEN_FILE = HOME / "credentials.json"
 APP_FILE = HOME / "app_credentials.json"
 
@@ -158,7 +158,7 @@ def load_token() -> str:
     if token:
         return token
     raise SystemExit(
-        "No Upstox access token found. Run `python -m onlyichu login` first, "
+        "No Upstox access token found. Run `python -m nsemomentum login` first, "
         "connect from the web dashboard, or set UPSTOX_ACCESS_TOKEN."
     )
 

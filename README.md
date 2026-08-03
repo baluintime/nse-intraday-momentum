@@ -1,10 +1,21 @@
-# OnlyIchu
+# NSE Momentum
 
-Automated **Ichimoku Cloud breakout options strategy** for Indian index derivatives on
-**Upstox**, with **paper trading** (simulated fills on live market data) and **live
-trading** (real orders) modes.
+Intraday **F&O options momentum** system for the **NSE** on **Upstox**, with
+**paper trading** (simulated fills on live market data) and **live trading** (real
+orders) modes.
 
-Implements the multi-timeframe execution protocol from
+The primary product is the **NSE Intraday Momentum** screener (BRD
+`REQ-NSE-OPT-2026-V1`): it auto-ranks the whole NSE F&O stock universe on the
+**1-minute and 5-minute** timeframes through gap / RVOL / OI build-up / depth
+screening, a directional matrix, false-breakout filters and Ichimoku Kumo trend
+retention, and locks the top candidates for the session — all driven from a full
+web page (`/`, scans at 09:15 & 13:00 IST). See
+[NSE Intraday Momentum strategy](#nse-intraday-momentum-strategy--operated-entirely-from-the-page)
+for the details.
+
+Shipping **alongside** it (secondary tool, at `/ichimoku`) is the original
+**Ichimoku Cloud breakout options strategy** for index derivatives, which
+implements the multi-timeframe execution protocol from
 `ichimoku_cloud_options_strategy.pdf`:
 
 - Ichimoku Cloud evaluated **strictly on candle closes** — in-progress candles are
@@ -71,16 +82,16 @@ needed), or put them in a `.env` file (`cp .env.example .env`) to skip that step
 Upstox access tokens last one trading day, so you connect once each morning.
 **Two ways:**
 
-- **From the web dashboard (recommended):** run `python -m onlyichu web`, open the
+- **From the web dashboard (recommended):** run `python -m nsemomentum web`, open the
   page, and click **Connect Upstox**. Enter your app credentials once (saved to
-  `~/.onlyichu/`), then **Open Upstox login** → approve → you're redirected back
+  `~/.nsemomentum/`), then **Open Upstox login** → approve → you're redirected back
   and connected automatically. If your app's redirect URI doesn't point at the
   dashboard, paste the `code` from the redirect URL, or paste an access token
   directly — both options are on the same screen. Register your Upstox app's
   redirect URI as `http://127.0.0.1:8080/callback` for the automatic flow.
-- **From the terminal:** `python -m onlyichu login`, then paste the `code`.
+- **From the terminal:** `python -m nsemomentum login`, then paste the `code`.
 
-The token is stored in `~/.onlyichu/credentials.json` and reused by `run`, `web`
+The token is stored in `~/.nsemomentum/credentials.json` and reused by `run`, `web`
 and `backtest`. The web server starts even without a token — it just shows the
 Connect screen until you're authenticated.
 
@@ -94,17 +105,17 @@ corrected key to put in `config.yaml`). An unresolvable index is disabled with
 suggestions instead of erroring forever. To search keys manually:
 
 ```bash
-python -m onlyichu instruments --index-only --search "next 50"
+python -m nsemomentum instruments --index-only --search "next 50"
 ```
 
 ## Run
 
 ```bash
 # Paper trading (default; simulated fills at live LTP with slippage)
-python -m onlyichu run --mode paper
+python -m nsemomentum run --mode paper
 
 # Live trading — places REAL orders with REAL money
-python -m onlyichu run --mode live
+python -m nsemomentum run --mode live
 ```
 
 Both modes need a valid access token (paper mode uses real market data). The engine:
@@ -123,13 +134,18 @@ of the first N minutes. A flat/choppy open is skipped until the market picks a
 direction; a trending open breaks the range immediately and trades normally.
 Set to `0` to trade from the open.
 
-### Live web dashboard
+### Live web app
 
 ```bash
-python -m onlyichu web            # http://127.0.0.1:8080
+python -m nsemomentum web            # http://127.0.0.1:8080
 ```
 
-A rich, animated, auto-refreshing page (no charts): it fetches historical +
+This serves the whole app: the **NSE Momentum** F&O scanner is the home page
+(`/`, see [its section below](#nse-intraday-momentum-strategy--the-home-page----operated-entirely-from-the-page)),
+and the **Ichimoku Cloud dashboard** below is the secondary page at **`/ichimoku`**
+(linked from the header).
+
+The Ichimoku dashboard is a rich, animated, auto-refreshing page (no charts): it fetches historical +
 intraday 1-minute candles from Upstox, computes the Ichimoku Cloud server-side
 for every index on both the 1m and 5m timeframes, and shows per pipeline the
 live signal (LONG / SHORT / NEUTRAL with glow animations), price position vs
@@ -205,14 +221,14 @@ positions are left untouched), pick the other mode, and START again. The
 status pill shows which engine is running; the strip below mirrors the running
 engine's positions and realized PnL.
 
-### NSE Intraday Momentum strategy (`/momentum` — operated entirely from the page)
+### NSE Intraday Momentum strategy (the home page `/` — operated entirely from the page)
 
-A second, self-contained strategy ships alongside the Ichimoku system,
-implementing the BRD **NSE Intraday Option Trade Selection & Execution System**
-(`REQ-NSE-OPT-2026-V1`). It is a **stock-options momentum screener** — a
-different beast from the index Ichimoku engine — and is driven **100% from the
-web page** (no command line beyond starting the server): open the dashboard,
-click **⚡ Momentum** in the header (or go to `http://127.0.0.1:8080/momentum`).
+The flagship strategy, implementing the BRD **NSE Intraday Option Trade
+Selection & Execution System** (`REQ-NSE-OPT-2026-V1`). It is a **stock-options
+momentum screener** — a different beast from the index Ichimoku engine — and is
+driven **100% from the web page** (no command line beyond starting the server):
+it is the **home page** at `http://127.0.0.1:8080/` (the Ichimoku dashboard moves
+to `/ichimoku`, linked from the header).
 
 **Auto F&O universe mode (default):** instead of a fixed list, the page scans
 the **whole NSE F&O stock universe**, ranks every stock by conviction, and
@@ -273,8 +289,8 @@ through the live engine — the Ichimoku engine remains the order path).
 ### Other commands
 
 ```bash
-python -m onlyichu status              # paper account: cash, PnL, open positions
-python -m onlyichu backtest --days 10  # replay history through the signal logic
+python -m nsemomentum status              # paper account: cash, PnL, open positions
+python -m nsemomentum backtest --days 10  # replay history through the signal logic
 ```
 
 The backtest is an index-level approximation (points × target delta), useful for
@@ -292,7 +308,7 @@ paper account state persists across restarts in `state/paper_state.json`.
 ## Project layout
 
 ```
-onlyichu/
+nsemomentum/
   auth.py        Upstox OAuth login + token storage
   upstox_api.py  REST client (candles, quotes, option chain, orders)
   candles.py     candle series + 1m→5m aggregation

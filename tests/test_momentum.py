@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from onlyichu.candles import Candle
-from onlyichu.momentum import (
+from nsemomentum.candles import Candle
+from nsemomentum.momentum import (
     AVOID,
     BUY_CE,
     BUY_PE,

@@ -1,5 +1,5 @@
-from onlyichu.broker import PaperBroker
-from onlyichu.config import Config
+from nsemomentum.broker import PaperBroker
+from nsemomentum.config import Config
 
 
 class FakeAPI:
@@ -46,7 +46,7 @@ def test_partial_exit_single_lot_noop(tmp_path):
 def test_exit_with_zero_entry_price_records_zero_pnl(tmp_path):
     # a position with no real entry price (e.g. a badly-adopted orphan) must not
     # fabricate a huge PnL on exit
-    from onlyichu.broker import Position
+    from nsemomentum.broker import Position
 
     cfg = make_cfg(tmp_path)
     api = FakeAPI({"NSE_FO|9": 1433.75})

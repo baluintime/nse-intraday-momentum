@@ -2,12 +2,12 @@
 
 from datetime import datetime, timedelta, timezone
 
-from onlyichu.config import Config, IndexConfig
-from onlyichu.engine import Engine, IndexRunner
-from onlyichu.ichimoku import IchimokuParams, IchimokuState
-from onlyichu.candles import Candle
-from onlyichu.options import OptionSelection
-from onlyichu.strategy import ENTER_LONG, Signal
+from nsemomentum.config import Config, IndexConfig
+from nsemomentum.engine import Engine, IndexRunner
+from nsemomentum.ichimoku import IchimokuParams, IchimokuState
+from nsemomentum.candles import Candle
+from nsemomentum.options import OptionSelection
+from nsemomentum.strategy import ENTER_LONG, Signal
 
 IST = timezone(timedelta(hours=5, minutes=30))
 PARAMS = IchimokuParams()

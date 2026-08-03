@@ -4,8 +4,8 @@ Reproduces the reported bug — a single long position triggering multiple sell
 orders because the exit re-fired while a prior sell was still working.
 """
 
-from onlyichu.broker import LiveBroker, Position
-from onlyichu.config import Config
+from nsemomentum.broker import LiveBroker, Position
+from nsemomentum.config import Config
 
 
 class FakeAPI:
@@ -29,7 +29,7 @@ class FakeAPI:
     def positions(self):
         return []
 
-    def place_order(self, instrument_key, quantity, transaction_type, order_type="LIMIT", price=0.0, product="I", tag="onlyichu"):
+    def place_order(self, instrument_key, quantity, transaction_type, order_type="LIMIT", price=0.0, product="I", tag="nsemomentum"):
         self.n += 1
         oid = f"O{self.n}"
         self.placed.append({"id": oid, "side": transaction_type, "type": order_type, "qty": quantity})
@@ -108,7 +108,7 @@ def test_normal_exit_places_one_order(tmp_path):
 
 def test_unknown_status_assumed_working(tmp_path):
     # if we can't read the pending order's status, never risk a duplicate
-    from onlyichu.upstox_api import UpstoxError
+    from nsemomentum.upstox_api import UpstoxError
 
     b = broker(tmp_path)
     b.state.positions["NIFTY:1m"] = _pos()

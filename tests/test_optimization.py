@@ -1,8 +1,8 @@
 """Optimization layer: MACD/Chikou/thickness entry filters, tiered Kijun exit,
 and partial profit-taking."""
 
-from onlyichu.ichimoku import IchimokuParams, IchimokuState, macd_hist
-from onlyichu.strategy import (
+from nsemomentum.ichimoku import IchimokuParams, IchimokuState, macd_hist
+from nsemomentum.strategy import (
     ENTER_LONG, ENTER_SHORT, EXIT, Eval, StrategyConfig, decide_eval, evaluate,
 )
 
@@ -83,8 +83,8 @@ def test_decide_eval_entry_exit_reversal():
 
 
 def test_build_strategy_config_per_index_thickness_override():
-    from onlyichu.config import Config, IndexConfig
-    from onlyichu.strategy import build_strategy_config
+    from nsemomentum.config import Config, IndexConfig
+    from nsemomentum.strategy import build_strategy_config
 
     cfg = Config()
     cfg.min_cloud_thickness = 5.0
@@ -106,7 +106,7 @@ def test_build_strategy_config_per_index_thickness_override():
 
 
 def test_config_yaml_parses_per_index_thickness(tmp_path):
-    from onlyichu.config import load_config
+    from nsemomentum.config import load_config
 
     yml = tmp_path / "c.yaml"
     yml.write_text(

@@ -162,7 +162,7 @@ class UpstoxAPI:
         order_type: str = "LIMIT",
         price: float = 0.0,
         product: str = "I",
-        tag: str = "onlyichu",
+        tag: str = "nsemomentum",
     ) -> str:
         payload = {
             "instrument_token": instrument_key,

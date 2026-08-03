@@ -71,7 +71,7 @@ def resolve_index_keys(instruments: list[IndexConfig], rows: list[dict] | None =
             log.error(
                 "%s: instrument key %r is invalid and could not be auto-resolved — "
                 "disabling this index. Close matches: %s. Use "
-                "`python -m onlyichu instruments --index-only --search <text>` to find the key.",
+                "`python -m nsemomentum instruments --index-only --search <text>` to find the key.",
                 ix.name, ix.key, suggestions or "none",
             )
             ix.enabled = False

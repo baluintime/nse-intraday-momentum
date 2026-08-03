@@ -1,5 +1,5 @@
-from onlyichu.config import IndexConfig
-from onlyichu.keyresolver import resolve_index_keys
+from nsemomentum.config import IndexConfig
+from nsemomentum.keyresolver import resolve_index_keys
 
 MASTER = [
     {"segment": "NSE_INDEX", "instrument_key": "NSE_INDEX|Nifty 50",

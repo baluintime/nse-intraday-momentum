@@ -1,4 +1,4 @@
-"""Command-line interface for OnlyIchu."""
+"""Command-line interface for NSE Momentum."""
 
 from __future__ import annotations
 
@@ -105,7 +105,7 @@ def cmd_status(args: argparse.Namespace) -> None:
         with open(cfg.paper_state_file, encoding="utf-8") as fh:
             state = json.load(fh)
     except FileNotFoundError:
-        print("No paper state yet — run `python -m onlyichu run --mode paper` first.")
+        print("No paper state yet — run `python -m nsemomentum run --mode paper` first.")
         return
     print(f"Paper cash          : {state.get('cash', 0):,.2f}")
     print(f"Realized PnL ({state.get('pnl_date', '-')}): {state.get('realized_pnl_today', 0):,.2f}")
@@ -123,8 +123,8 @@ def cmd_status(args: argparse.Namespace) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        prog="onlyichu",
-        description="Ichimoku Cloud multi-timeframe options strategy on Upstox (paper & live).",
+        prog="nsemomentum",
+        description="NSE Momentum — intraday F&O options momentum + Ichimoku strategy on Upstox (paper & live).",
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="debug logging")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -144,7 +144,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--yes", action="store_true", help="skip the live-mode confirmation prompt")
     p.set_defaults(func=cmd_run)
 
-    p = sub.add_parser("web", help="serve the live Ichimoku dashboard (auto-refreshing web page)")
+    p = sub.add_parser("web", help="serve the NSE Momentum web app (F&O scanner home + Ichimoku dashboard)")
     p.add_argument("--config", default="config.yaml")
     p.add_argument("--host", default=None, help="bind address (default from config)")
     p.add_argument("--port", type=int, default=None, help="port (default from config)")

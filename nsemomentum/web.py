@@ -2,7 +2,7 @@
 the Ichimoku Cloud server-side for every index on both timeframes, and serves
 an auto-refreshing animated page (no charts — signal cards and level ladders).
 
-Run with:  python -m onlyichu web
+Run with:  python -m nsemomentum web
 """
 
 from __future__ import annotations
@@ -317,7 +317,7 @@ def _callback_page(ok: bool, message: str) -> str:
     icon = "✓" if ok else "✕"
     safe = message.replace("<", "&lt;").replace(">", "&gt;")
     return f"""<!doctype html><html><head><meta charset="utf-8">
-<title>OnlyIchu — Upstox</title><style>
+<title>NSE Momentum — Upstox</title><style>
   body {{ background:#060913; color:#e8edf7; font:15px/1.5 system-ui,sans-serif;
          display:grid; place-items:center; height:100vh; margin:0; }}
   .box {{ text-align:center; padding:36px 44px; border-radius:18px;
@@ -618,7 +618,7 @@ class AuthManager:
         creds = auth.load_app_credentials()
         if not creds.complete:
             return False, "enter your Upstox app credentials first"
-        return True, auth.build_login_url(creds.api_key, creds.redirect_uri, state="onlyichu")
+        return True, auth.build_login_url(creds.api_key, creds.redirect_uri, state="nsemomentum")
 
     def complete_with_code(self, code: str) -> tuple[bool, str]:
         creds = auth.load_app_credentials()
@@ -673,12 +673,15 @@ def create_app(cfg: Config, api: UpstoxAPI, token: str | None = None) -> Flask:
     momentum = MomentumService(cfg, api)
 
     @app.get("/")
-    def dashboard():  # type: ignore[unused-variable]
-        return render_template("dashboard.html", refresh_seconds=cfg.web_refresh_seconds)
-
     @app.get("/momentum")
     def momentum_page():  # type: ignore[unused-variable]
+        # NSE Momentum is the primary product — it is the home page.
         return render_template("momentum.html", refresh_seconds=cfg.web_refresh_seconds)
+
+    @app.get("/ichimoku")
+    def dashboard():  # type: ignore[unused-variable]
+        # The Ichimoku Cloud dashboard is a secondary, linked tool.
+        return render_template("dashboard.html", refresh_seconds=cfg.web_refresh_seconds)
 
     @app.get("/api/momentum")
     def api_momentum():  # type: ignore[unused-variable]
@@ -873,7 +876,7 @@ def create_app(cfg: Config, api: UpstoxAPI, token: str | None = None) -> Flask:
         return send_file(
             os.path.abspath(path),
             as_attachment=True,
-            download_name=f"onlyichu_trades_{mode}_{datetime.now().strftime('%Y%m%d')}.csv",
+            download_name=f"nsemomentum_trades_{mode}_{datetime.now().strftime('%Y%m%d')}.csv",
             mimetype="text/csv",
         )
 

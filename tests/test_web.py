@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta, timezone
 
-from onlyichu.candles import Candle
-from onlyichu.config import Config, IndexConfig
-from onlyichu.ichimoku import IchimokuParams
-from onlyichu.strategy import StrategyConfig
-from onlyichu.web import DashboardService, analyze_series, create_app
+from nsemomentum.candles import Candle
+from nsemomentum.config import Config, IndexConfig
+from nsemomentum.ichimoku import IchimokuParams
+from nsemomentum.strategy import StrategyConfig
+from nsemomentum.web import DashboardService, analyze_series, create_app
 
 IST = timezone(timedelta(hours=5, minutes=30))
 PARAMS = StrategyConfig(ich=IchimokuParams(tenkan=2, kijun=3, senkou_b=4, displacement=2))
@@ -102,7 +102,7 @@ def test_flask_routes(tmp_path):
     client = app.test_client()
     page = client.get("/")
     assert page.status_code == 200
-    assert b"OnlyIchu" in page.data
+    assert b"NSE Momentum" in page.data
     api = client.get("/api/dashboard")
     assert api.status_code == 200
     body = api.get_json()
@@ -145,7 +145,7 @@ def test_dashboard_disconnected_when_no_token(tmp_path):
 
 
 def test_auth_connect_with_manual_token(tmp_path, monkeypatch):
-    from onlyichu import auth
+    from nsemomentum import auth
 
     monkeypatch.setattr(auth, "verify_token", lambda t: {"user_name": "Balaji", "email": "b@x.com"} if t == "good" else None)
     monkeypatch.setattr(auth, "save_token", lambda t: None)
@@ -163,7 +163,7 @@ def test_auth_connect_with_manual_token(tmp_path, monkeypatch):
 
 
 def test_auth_credentials_and_login_url(tmp_path, monkeypatch):
-    from onlyichu import auth
+    from nsemomentum import auth
 
     saved = {}
     monkeypatch.setattr(auth, "save_app_credentials",
@@ -255,7 +255,7 @@ def test_index_trade_toggle(tmp_path):
 def test_apply_overrides_restores_toggles(tmp_path):
     import json
 
-    from onlyichu.settings import apply_overrides
+    from nsemomentum.settings import apply_overrides
 
     cfg = make_cfg(tmp_path)
     cfg.instruments = [IndexConfig(name="NIFTY", key="k"), IndexConfig(name="BANKNIFTY", key="k2")]
@@ -272,7 +272,7 @@ def test_trade_log_endpoints(tmp_path):
     cfg.paper_trade_log = str(tmp_path / "trades_paper.csv")
     cfg.live_trade_log = str(tmp_path / "trades_live.csv")
 
-    from onlyichu.broker import PaperBroker
+    from nsemomentum.broker import PaperBroker
 
     broker = PaperBroker(cfg, None)
     broker.enter("NIFTY:1m", "NSE_FO|1", "NIFTY 25500 CE", 75, "LONG", 100.0)

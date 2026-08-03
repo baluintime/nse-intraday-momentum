@@ -1,13 +1,13 @@
 """Live data plumbing for the NSE Intraday Momentum web page.
 
 :class:`MomentumService` fetches candles, quotes and depth from Upstox for each
-watchlist stock, assembles a :class:`~onlyichu.momentum.CandidateInput` for both
+watchlist stock, assembles a :class:`~nsemomentum.momentum.CandidateInput` for both
 the 1-minute and 5-minute timeframes, and runs
-:func:`~onlyichu.momentum.evaluate_candidate`. Results are cached briefly so
+:func:`~nsemomentum.momentum.evaluate_candidate`. Results are cached briefly so
 several open dashboard tabs don't multiply API calls.
 
 The heavy lifting (the actual strategy rules) lives in
-:mod:`onlyichu.momentum`; this module is only the network + aggregation glue.
+:mod:`nsemomentum.momentum`; this module is only the network + aggregation glue.
 """
 
 from __future__ import annotations

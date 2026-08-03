@@ -1,4 +1,4 @@
-from onlyichu.ichimoku import (
+from nsemomentum.ichimoku import (
     IchimokuParams,
     compute_state,
     long_entry,

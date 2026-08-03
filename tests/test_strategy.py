@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 
-from onlyichu.candles import Candle
-from onlyichu.ichimoku import IchimokuParams, IchimokuState
-from onlyichu.strategy import ENTER_LONG, ENTER_SHORT, EXIT, Pipeline, StrategyConfig, decide
+from nsemomentum.candles import Candle
+from nsemomentum.ichimoku import IchimokuParams, IchimokuState
+from nsemomentum.strategy import ENTER_LONG, ENTER_SHORT, EXIT, Pipeline, StrategyConfig, decide
 
 IST = timezone(timedelta(hours=5, minutes=30))
 

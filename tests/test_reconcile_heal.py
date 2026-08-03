@@ -3,10 +3,10 @@ square off one it can't, and drop phantoms Upstox has already closed."""
 
 from datetime import datetime, timedelta, timezone
 
-from onlyichu.broker import Position
-from onlyichu.candles import Candle
-from onlyichu.config import Config, IndexConfig
-from onlyichu.engine import Engine
+from nsemomentum.broker import Position
+from nsemomentum.candles import Candle
+from nsemomentum.config import Config, IndexConfig
+from nsemomentum.engine import Engine
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -33,7 +33,7 @@ class FakeAPI:
         return self._ltp
 
     def place_order(self, instrument_key, quantity, transaction_type, order_type="LIMIT",
-                    price=0.0, product="I", tag="onlyichu"):
+                    price=0.0, product="I", tag="nsemomentum"):
         self.n += 1
         oid = f"O{self.n}"
         self.placed.append((transaction_type, quantity, instrument_key))

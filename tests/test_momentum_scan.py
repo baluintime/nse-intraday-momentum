@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timedelta, timezone
 
-from onlyichu.fno_universe import build_fno_universe
-from onlyichu.momentum_web import next_scan_at, scan_due, symbol_score
+from nsemomentum.fno_universe import build_fno_universe
+from nsemomentum.momentum_web import next_scan_at, scan_due, symbol_score
 
 IST = timezone(timedelta(hours=5, minutes=30))
 TODAY = date(2026, 8, 3)

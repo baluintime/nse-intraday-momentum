@@ -3,7 +3,7 @@
 Implements the screening + signal methodology from the BRD
 ``NSE Intraday Option Trade Selection & Execution System`` (REQ-NSE-OPT-2026-V1)
 as small, pure, testable functions. Nothing here touches the network; the web
-layer (:mod:`onlyichu.momentum_web`) feeds it live Upstox data.
+layer (:mod:`nsemomentum.momentum_web`) feeds it live Upstox data.
 
 The BRD stacks five quantitative layers, all of which must agree before a trade
 is taken:
