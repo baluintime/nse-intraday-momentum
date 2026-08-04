@@ -727,6 +727,9 @@ def create_app(cfg: Config, api: UpstoxAPI, token: str | None = None) -> Flask:
             "lots_per_trade": cfg.lots_per_trade,
             "capital": cfg.paper_starting_cash,
             "daily_profit_target": cfg.daily_profit_target,
+            "momentum_linked": cfg.mom_trade_with_ichimoku,
+            "no_index_trade": cfg.mom_no_index_trade,
+            "top_n": cfg.mom_top_n,
         }
         return jsonify(payload)
 
@@ -854,6 +857,11 @@ def create_app(cfg: Config, api: UpstoxAPI, token: str | None = None) -> Flask:
         if not index.options_available and enabled:
             return jsonify(
                 {"ok": False, "message": f"{name} has no listed options — it is always signal-only"}
+            ), 400
+        if cfg.mom_no_index_trade and enabled:
+            return jsonify(
+                {"ok": False, "message": "index trading is OFF (momentum.trade.no_index) — the engine "
+                                         "trades the Momentum top-N picks. Set no_index:false to trade indices."}
             ), 400
         index.trade_enabled = enabled
         settings_mod.save_overrides(cfg, trade_toggle=(name, enabled))

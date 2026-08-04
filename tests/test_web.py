@@ -201,9 +201,10 @@ def test_settings_apply_and_persist(tmp_path):
     # paper state file cash was reset to the new capital
     with open(cfg.paper_state_file) as fh:
         assert json.load(fh)["cash"] == 250000.0
-    # settings echoed in the dashboard payload
+    # settings echoed in the dashboard payload (core keys; extra flags may be present)
     body = client.get("/api/dashboard").get_json()
-    assert body["settings"] == {"lots_per_trade": 3, "capital": 250000.0, "daily_profit_target": 5000.0}
+    s = body["settings"]
+    assert s["lots_per_trade"] == 3 and s["capital"] == 250000.0 and s["daily_profit_target"] == 5000.0
     # overrides persisted for the next start
     with open(tmp_path / "settings.json") as fh:
         saved = json.load(fh)

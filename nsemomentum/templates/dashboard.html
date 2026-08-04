@@ -430,6 +430,7 @@
     <button class="btn" id="btnApply">APPLY</button>
     <span class="engine-status" id="engineStatus"><span class="dot"></span><span id="engineText">ENGINE STOPPED</span></span>
     <div class="ctrl-msg" id="ctrlMsg"></div>
+    <div class="ctrl-msg show" id="tradeTargetNote" style="color:var(--violet)"></div>
   </div>
 
   <div class="banner" id="syncBanner" style="display:none"></div>
@@ -599,6 +600,8 @@ function buildPipe(pipeId) {
   return pipe;
 }
 
+let NO_INDEX = false;  // no_index mode: indices are shown but never traded
+
 function buildCard(ix, order) {
   const card = el("div", "card");
   card.id = "card-" + ix.name;
@@ -705,7 +708,19 @@ function renderIndex(ix, order) {
   }
 
   const tg = card.querySelector(".trade-toggle");
-  if (tg && document.activeElement !== tg) tg.checked = !!ix.trade_enabled;
+  if (tg) {
+    if (NO_INDEX && ix.options_available) {
+      // no_index mode: indices are never traded — the engine trades Momentum picks
+      tg.checked = false; tg.disabled = true;
+      const lbl = card.querySelector(".sw-label"); if (lbl) lbl.textContent = "NOT TRADED";
+      const sw = tg.closest(".switch"); if (sw) { sw.style.opacity = ".5";
+        sw.title = "Index trading is OFF (no_index) — the engine trades the Momentum top-N picks"; }
+    } else if (document.activeElement !== tg) {
+      tg.disabled = false; const sw = tg.closest(".switch"); if (sw) sw.style.opacity = "";
+      const lbl = card.querySelector(".sw-label"); if (lbl) lbl.textContent = "TRADE";
+      tg.checked = !!ix.trade_enabled;
+    }
+  }
 
   const err = card.querySelector(".idx-error");
   err.style.display = ix.error ? "block" : "none";
@@ -1089,6 +1104,16 @@ async function loadData() {
   // index by pipeline so cards can show a recent entry-skip note
   pipelineSkips = {};
   ((data.trading && data.trading.skips) || []).forEach((s) => { pipelineSkips[s.pipeline] = s; });
+  NO_INDEX = !!(data.settings && data.settings.no_index_trade);
+  const note = $("tradeTargetNote");
+  if (note) {
+    if (data.settings && data.settings.momentum_linked && NO_INDEX)
+      note.innerHTML = 'Engine trades the <b>Momentum top-' + (data.settings.top_n || 3) +
+        '</b> picks · indices are signal-only (<a href="/" style="color:var(--cyan)">Momentum home</a>)';
+    else if (data.settings && data.settings.momentum_linked)
+      note.innerHTML = 'Engine trades the <b>Momentum top-' + (data.settings.top_n || 3) + '</b> picks + enabled indices';
+    else note.textContent = '';
+  }
   (data.indices || []).forEach(renderIndex);
   renderTrading(data.trading);
   renderAccount(data);
