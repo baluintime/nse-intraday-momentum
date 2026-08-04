@@ -291,8 +291,9 @@ buys an ITM option on a signal, exactly like it does for indices. As scans chang
 the picks, new stocks are warmed up and start trading, while a stock that drops
 out of the top-N is **held only to manage its exit** (no new entries) if it still
 has an open position, otherwise dropped. With `momentum.trade.no_index: true`
-(default) the engine **does not trade the config indices** — they stay signal-only
-on `/ichimoku`. Start/stop the engine and pick paper vs live from the Ichimoku
+(default) the engine **does not trade the config indices**, and the **`/ichimoku`
+page shows the locked top-N picks** (their Ichimoku 1m/5m signals) instead of the
+indices — blank until the first scan locks any. Start/stop the engine and pick paper vs live from the Ichimoku
 dashboard's engine bar (live still requires typing `LIVE` to confirm). Everything
 else — risk caps, entry cutoff, square-off, reconciliation — applies unchanged.
 

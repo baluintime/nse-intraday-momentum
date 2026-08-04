@@ -79,6 +79,11 @@ def make_cfg(tmp_path) -> Config:
     cfg = Config()
     cfg.paper_state_file = str(tmp_path / "nope.json")
     cfg.instruments = [IndexConfig(name="FAKE", key="NSE_INDEX|Fake", options_available=False)]
+    # these tests cover the plain index dashboard/engine path (the momentum-linked
+    # path — dashboard shows the scanner's picks, engine trades them — has its own
+    # tests in test_momentum_engine.py)
+    cfg.mom_trade_with_ichimoku = False
+    cfg.mom_no_index_trade = False
     return cfg
 
 

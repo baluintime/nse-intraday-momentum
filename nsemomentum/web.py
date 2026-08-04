@@ -109,9 +109,10 @@ class DashboardService:
     """Builds the dashboard payload, caching Upstox data briefly so several
     open browser tabs don't multiply API calls."""
 
-    def __init__(self, cfg: Config, api: UpstoxAPI):
+    def __init__(self, cfg: Config, api: UpstoxAPI, momentum=None):
         self.cfg = cfg
         self.api = api
+        self.momentum = momentum  # when momentum-linked, the page shows the picks
         self.tz = get_zone(cfg.timezone)
         from .strategy import build_strategy_config
         self.sc = build_strategy_config(cfg)
@@ -135,6 +136,17 @@ class DashboardService:
 
     def _now(self) -> datetime:
         return datetime.now(self.tz)
+
+    def _display_instruments(self) -> list[IndexConfig]:
+        """Instruments to show on the dashboard. When momentum-linked, these are
+        the scanner's locked top-N stock picks (blank until the first scan); a
+        plain index run falls back to the configured index universe."""
+        if self.cfg.mom_trade_with_ichimoku and self.momentum is not None:
+            return [
+                IndexConfig(name=s.name, key=s.key, options_available=True, trade_enabled=True)
+                for s in self.momentum.locked_symbols()
+            ]
+        return self.cfg.enabled_instruments
 
     def _historical(self, index: IndexConfig, today: str) -> list[Candle]:
         cached = self._hist.get(index.key)
@@ -207,14 +219,15 @@ class DashboardService:
         indices_payload: list[dict] = []
         error: str | None = None
 
-        keys = [ix.key for ix in self.cfg.enabled_instruments]
+        instruments = self._display_instruments()
+        keys = [ix.key for ix in instruments]
         ltps: dict[str, float] = {}
         try:
             ltps = self.api.ltp(keys) if keys else {}
         except UpstoxError as exc:
             log.warning("ltp fetch failed: %s", exc)
 
-        for index in self.cfg.enabled_instruments:
+        for index in instruments:
             entry: dict = {
                 "name": index.name,
                 "key": index.key,
@@ -667,8 +680,8 @@ class AuthManager:
 def create_app(cfg: Config, api: UpstoxAPI, token: str | None = None) -> Flask:
     app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), "templates"))
     from .momentum_web import MomentumService
-    service = DashboardService(cfg, api)
     momentum = MomentumService(cfg, api)
+    service = DashboardService(cfg, api, momentum=momentum)
     controller = TradingController(cfg, api, token, momentum=momentum)
     auth_mgr = AuthManager(api, controller)
 

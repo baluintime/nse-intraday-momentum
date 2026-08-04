@@ -600,7 +600,8 @@ function buildPipe(pipeId) {
   return pipe;
 }
 
-let NO_INDEX = false;  // no_index mode: indices are shown but never traded
+let NO_INDEX = false;   // no_index mode: indices are shown but never traded
+let MOM_LINKED = false;  // momentum-linked: the cards ARE the traded top-N picks
 
 function buildCard(ix, order) {
   const card = el("div", "card");
@@ -708,15 +709,19 @@ function renderIndex(ix, order) {
   }
 
   const tg = card.querySelector(".trade-toggle");
-  if (tg) {
+  const sw = tg ? tg.closest(".switch") : null;
+  if (MOM_LINKED) {
+    // the cards are the traded top-N picks — the whole set is traded, no per-card toggle
+    if (sw) sw.style.display = "none";
+  } else if (tg) {
+    if (sw) sw.style.display = "";
     if (NO_INDEX && ix.options_available) {
-      // no_index mode: indices are never traded — the engine trades Momentum picks
       tg.checked = false; tg.disabled = true;
       const lbl = card.querySelector(".sw-label"); if (lbl) lbl.textContent = "NOT TRADED";
-      const sw = tg.closest(".switch"); if (sw) { sw.style.opacity = ".5";
+      if (sw) { sw.style.opacity = ".5";
         sw.title = "Index trading is OFF (no_index) — the engine trades the Momentum top-N picks"; }
     } else if (document.activeElement !== tg) {
-      tg.disabled = false; const sw = tg.closest(".switch"); if (sw) sw.style.opacity = "";
+      tg.disabled = false; if (sw) sw.style.opacity = "";
       const lbl = card.querySelector(".sw-label"); if (lbl) lbl.textContent = "TRADE";
       tg.checked = !!ix.trade_enabled;
     }
@@ -1105,16 +1110,25 @@ async function loadData() {
   pipelineSkips = {};
   ((data.trading && data.trading.skips) || []).forEach((s) => { pipelineSkips[s.pipeline] = s; });
   NO_INDEX = !!(data.settings && data.settings.no_index_trade);
+  MOM_LINKED = !!(data.settings && data.settings.momentum_linked);
+  const topn = (data.settings && data.settings.top_n) || 3;
+  const picks = data.indices || [];
   const note = $("tradeTargetNote");
   if (note) {
-    if (data.settings && data.settings.momentum_linked && NO_INDEX)
-      note.innerHTML = 'Engine trades the <b>Momentum top-' + (data.settings.top_n || 3) +
-        '</b> picks · indices are signal-only (<a href="/" style="color:var(--cyan)">Momentum home</a>)';
-    else if (data.settings && data.settings.momentum_linked)
-      note.innerHTML = 'Engine trades the <b>Momentum top-' + (data.settings.top_n || 3) + '</b> picks + enabled indices';
+    if (MOM_LINKED && picks.length)
+      note.innerHTML = 'These are the <b>Momentum top-' + topn + '</b> picks — the engine trades them ' +
+        '(scans 09:15 &amp; 13:00 IST · <a href="/" style="color:var(--cyan)">Momentum home</a>)';
+    else if (MOM_LINKED)
+      note.innerHTML = 'No Momentum picks yet — run a scan on the <a href="/" style="color:var(--cyan)">Momentum home</a> ' +
+        '(auto at 09:15 &amp; 13:00 IST)';
     else note.textContent = '';
   }
-  (data.indices || []).forEach(renderIndex);
+  picks.forEach(renderIndex);
+  // drop cards for symbols no longer in the current set (picks change at each scan)
+  const names = new Set(picks.map((i) => i.name));
+  $("grid").querySelectorAll(".card").forEach((c) => {
+    if (!names.has(c.id.slice(5))) c.remove();
+  });
   renderTrading(data.trading);
   renderAccount(data);
   renderSettings(data.settings);
