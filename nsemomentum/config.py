@@ -85,7 +85,9 @@ class Config:
     min_days_to_expiry: int = 0
     order_type: str = "LIMIT"
     limit_tolerance_pct: float = 0.25
-    product: str = "I"
+    # D = delivery/NRML. Stock options can't be bought intraday (MIS) on Upstox,
+    # so default to D (also valid for index options). Overridable in config.yaml.
+    product: str = "D"
     # liquidity guards (0 disables the check)
     min_volume: int = 0
     min_open_interest: int = 0

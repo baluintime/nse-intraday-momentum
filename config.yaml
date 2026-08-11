@@ -74,8 +74,12 @@ options:
   # LIMIT places a marketable limit at LTP +/- limit_tolerance_pct; MARKET uses market orders.
   order_type: LIMIT
   limit_tolerance_pct: 0.25
-  # I = intraday, D = delivery/margin
-  product: I
+  # Order product: I = intraday/MIS, D = delivery/NRML (normal, carry-forward margin).
+  # Stock options must be bought as D — Upstox rejects intraday (MIS) buys on stock
+  # options ("Intraday buy orders can't be placed for options. Please place a
+  # delivery order."). D works for index options too, so keep D when trading the
+  # momentum stock picks. The strategy still squares off intraday (by 15:15).
+  product: D
   # Liquidity guards — thin/untraded strikes are skipped. 0 disables a check.
   # min_volume: reject strikes that have traded fewer contracts today than this.
   #   An untraded (0-volume) strike has a STALE ltp/greeks that mislead delta
