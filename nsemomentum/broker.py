@@ -486,10 +486,12 @@ class LiveBroker(BaseBroker):
             while pid in self.state.positions:
                 i += 1
                 pid = f"{base}#{i}"
+            # a bought PUT is a SHORT (bearish) position in our book; a CE is LONG.
+            direction = "SHORT" if str(info["symbol"]).strip().upper().endswith("PE") else "LONG"
             self.state.positions[pid] = Position(
                 pipeline_id=pid, instrument_key=key, symbol=info["symbol"], qty=delta,
                 entry_price=info["avg"], entry_time=datetime.now().isoformat(timespec="seconds"),
-                direction="LONG",
+                direction=direction,
             )
             added += 1
             log.warning("adopted untracked Upstox position %s x%d @ %.2f", info["symbol"], delta, info["avg"])

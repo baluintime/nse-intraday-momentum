@@ -136,6 +136,68 @@ def test_recent_order_defers_heal(tmp_path):
     assert e._sync_ok is False             # stays paused one cycle until Upstox reflects
 
 
+def make_stock_engine(tmp_path, positions, name="RELIANCE", key="NSE_EQ|INE002A01018"):
+    """Engine whose only runner is an F&O STOCK (as in momentum-linked trading),
+    so orphan reconciliation is exercised on equity options, not index options."""
+    c = Config()
+    c.mode = "live"
+    c.live_trade_log = str(tmp_path / "live.csv")
+    c.instruments = [IndexConfig(name, key, True, True)]
+    e = Engine(c, FakeAPI(positions))  # momentum=None -> runners come from instruments
+    e.broker.FILL_POLL_SECONDS = 2
+    return e
+
+
+def test_equity_call_orphan_adopted(tmp_path):
+    # a RELIANCE call orphan under a bullish trend -> adopt & keep (LONG)
+    e = make_stock_engine(tmp_path, [upos("NSE_FO|RILCE", 250, 55.0, "RELIANCE 3000 CE")])
+    warm(e, up=True)
+    assert e.reconcile_positions() is True
+    held = [p for p in e.broker.open_positions() if p.instrument_key == "NSE_FO|RILCE"]
+    assert held and held[0].direction == "LONG" and held[0].qty == 250
+    assert e.api.placed == []  # kept, nothing sold
+
+
+def test_equity_put_orphan_adopted_as_short(tmp_path):
+    # a RELIANCE put orphan under a bearish trend -> adopt & keep (SHORT)
+    e = make_stock_engine(tmp_path, [upos("NSE_FO|RILPE", 250, 60.0, "RELIANCE 2800 PE")])
+    warm(e, up=False)
+    assert e.reconcile_positions() is True
+    held = [p for p in e.broker.open_positions() if p.instrument_key == "NSE_FO|RILPE"]
+    assert held and held[0].direction == "SHORT"
+    assert e.api.placed == []
+
+
+def test_equity_option_hyphen_underlying_matches(tmp_path):
+    # BAJAJ-AUTO option symbol comes back without the hyphen — must still match
+    e = make_stock_engine(
+        tmp_path, [upos("NSE_FO|BJ", 200, 40.0, "BAJAJAUTO 9000 CE")],
+        name="BAJAJ-AUTO", key="NSE_EQ|BJA",
+    )
+    warm(e, up=True)
+    r = e._runner_for_symbol("BAJAJAUTO 9000 CE")
+    assert r is not None and r.index.name == "BAJAJ-AUTO"
+    assert e.reconcile_positions() is True
+    assert [p for p in e.broker.open_positions() if p.instrument_key == "NSE_FO|BJ"]  # adopted
+
+
+def test_index_option_orphan_squared_when_no_index_runner(tmp_path):
+    # a stock-only (momentum) engine has no index runner, so an index-option
+    # orphan can't be adopted -> it is squared off
+    e = make_stock_engine(tmp_path, [upos("NSE_FO|NF", 75, 120.0, "NIFTY 24050 CE")])
+    warm(e, up=True)
+    e.reconcile_positions()
+    assert e.api.placed and e.api.placed[0][0] == "SELL"
+    assert e.broker.open_positions() == []
+
+
+def test_seed_labels_put_as_short(tmp_path):
+    e = make_stock_engine(tmp_path, [upos("NSE_FO|RILPE", 250, 60.0, "RELIANCE 2800 PE")])
+    e.broker.seed_from_upstox()
+    held = [p for p in e.broker.open_positions() if p.instrument_key == "NSE_FO|RILPE"]
+    assert held and held[0].direction == "SHORT"
+
+
 def test_paper_mode_never_paused(tmp_path):
     c = Config()
     c.mode = "paper"

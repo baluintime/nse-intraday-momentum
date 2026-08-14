@@ -16,6 +16,7 @@ open of the subsequent candle, per the spec. Exits execute immediately.
 from __future__ import annotations
 
 import logging
+import re
 import threading
 import time as _time
 from datetime import datetime, time, timedelta
@@ -394,12 +395,23 @@ class Engine:
             self.trades_today[pid] = self.trades_today.get(pid, 0) + 1
             self.last_skips.pop(pid, None)  # cleared: this pipeline just entered
 
+    @staticmethod
+    def _alnum(text: str) -> str:
+        """Uppercase, stripped of every non-alphanumeric char — so an option
+        trading symbol and its underlying name compare cleanly regardless of
+        spaces, hyphens or ampersands (BAJAJ-AUTO / M&M equity options included)."""
+        return re.sub(r"[^A-Z0-9]", "", (text or "").upper())
+
     def _runner_for_symbol(self, symbol: str) -> "IndexRunner | None":
-        """Map an option trading symbol (e.g. 'BANKNIFTY 56100 CE') to its index runner."""
-        norm = symbol.replace(" ", "").upper()
-        # longest index name first so NIFTY doesn't shadow NIFTYNXT50 / BANKNIFTY
-        for runner in sorted(self.runners, key=lambda r: -len(r.index.name)):
-            if norm.startswith(runner.index.name.replace(" ", "").upper()):
+        """Map an option trading symbol to its runner by underlying prefix. Works
+        for both index options ('BANKNIFTY 56100 CE') and equity options
+        ('RELIANCE 3000 CE', 'BAJAJ-AUTO 9000 PE')."""
+        norm = self._alnum(symbol)
+        # longest underlying first so NIFTY doesn't shadow NIFTYNXT50 / BANKNIFTY,
+        # and INFY doesn't shadow a hypothetical INFY-prefixed longer symbol
+        for runner in sorted(self.runners, key=lambda r: -len(self._alnum(r.index.name))):
+            rn = self._alnum(runner.index.name)
+            if rn and norm.startswith(rn):
                 return runner
         return None
 
