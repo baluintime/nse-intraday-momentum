@@ -227,9 +227,10 @@ class BaseBroker:
         """Whether we placed an order on this instrument very recently (live only)."""
         return False
 
-    def seed_from_upstox(self) -> int:
+    def seed_from_upstox(self, keep=None) -> int:
         """Adopt any untracked real positions into the app book so square-off
-        closes what actually exists. No-op for paper. Returns count adopted."""
+        closes what actually exists. No-op for paper. Returns count adopted.
+        `keep(symbol)`, when given, restricts adoption to positions it accepts."""
         return 0
 
     def adopt_position(
@@ -469,7 +470,7 @@ class LiveBroker(BaseBroker):
                 })
         return mismatches
 
-    def seed_from_upstox(self) -> int:
+    def seed_from_upstox(self, keep=None) -> int:
         try:
             ups = self._upstox_net()
         except UpstoxError as exc:
@@ -480,6 +481,9 @@ class LiveBroker(BaseBroker):
         for key, info in ups.items():
             delta = info["qty"] - app.get(key, 0)
             if delta <= 0:  # already tracked (or app thinks it holds more — reconcile flags that)
+                continue
+            if keep is not None and not keep(info["symbol"]):
+                log.info("seed: %s not in the current picks — not adopting", info["symbol"])
                 continue
             pid = base = f"ADOPTED:{info['symbol']}"
             i = 1

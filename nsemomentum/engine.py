@@ -225,17 +225,22 @@ class Engine:
             ", ".join(f"{tf}m series={len(p.series)}" for tf, p in runner.pipelines.items()),
         )
 
+    def _seed_keep(self):
+        """Restrict seed adoption to the current picks when momentum-linked; adopt
+        everything (None) in the plain index engine."""
+        return self._is_current_pick if self.momentum is not None else None
+
     def warmup(self) -> None:
+        # establish the current picks first, so seeding only adopts their positions
+        self.sync_momentum_runners()
         if self.cfg.mode == "live":
             # seed the live book from Upstox so square-off closes what really exists
             try:
-                n = self.broker.seed_from_upstox()
+                n = self.broker.seed_from_upstox(keep=self._seed_keep())
                 if n:
                     log.warning("seeded %d untracked Upstox position(s) into the live book at startup", n)
             except Exception as exc:  # noqa: BLE001
                 log.warning("startup position seeding failed: %s", exc)
-        # pull in the current momentum picks (these warm themselves as they are added)
-        self.sync_momentum_runners()
         for runner in list(self.runners):
             if not runner.warmed:
                 self._warmup_runner(runner)
@@ -462,16 +467,39 @@ class Engine:
                 self.broker.drop_position(pos.pipeline_id, "closed externally (Upstox flat)")
                 excess -= pos.qty
 
+    def _is_current_pick(self, symbol: str) -> bool:
+        """Whether an option symbol belongs to a stock we're currently trading —
+        i.e. one of the current scan's picks (it has a runner)."""
+        return self._runner_for_symbol(symbol) is not None
+
     def reconcile_positions(self) -> bool:
         """Live only: compare the app book to Upstox's real positions and
         self-heal — adopt an orphan the strategy would still hold, square off one
         it wouldn't, drop phantoms Upstox has closed. Pause entries only if a
-        mismatch remains after healing. Returns True if in sync."""
+        mismatch remains after healing. Returns True if in sync.
+
+        An ORPHAN (an untracked Upstox position) is only touched when its stock is
+        one of the current scan's picks; a position in any other stock is left
+        completely alone — not adopted, not squared off, and it does not pause
+        trading. This keeps the engine from acting on unrelated positions in the
+        account order book."""
         if self.cfg.mode != "live":
             self._sync_ok = True
             return True
         mismatches = self.broker.reconcile()
+        actionable, skipped = [], []
         for m in mismatches:
+            is_orphan = m["upstox_qty"] > m["app_qty"]
+            if is_orphan and not self._is_current_pick(m["symbol"]):
+                skipped.append(m)          # not in the current picks — leave it alone
+            else:
+                actionable.append(m)
+        if skipped:
+            log.info(
+                "reconcile: %d untracked position(s) not in the current picks — left alone: %s",
+                len(skipped), ", ".join(m["symbol"] for m in skipped),
+            )
+        for m in actionable:
             try:
                 if m["upstox_qty"] > m["app_qty"]:
                     self._heal_orphan(m["instrument"], m["symbol"], m["upstox_qty"] - m["app_qty"], m.get("avg", 0.0))
@@ -479,13 +507,17 @@ class Engine:
                     self._drop_phantom(m["instrument"], m["app_qty"] - m["upstox_qty"])
             except Exception as exc:  # noqa: BLE001 - healing is best-effort; stay paused if it fails
                 log.error("reconcile heal failed for %s: %s", m.get("symbol"), exc)
-        if mismatches:
-            mismatches = self.broker.reconcile()  # re-check after healing
+        # only re-check the instruments we actually acted on — a skipped orphan
+        # stays a "mismatch" forever and must never pause trading
+        remaining: list[dict] = []
+        if actionable:
+            keys = {m["instrument"] for m in actionable}
+            remaining = [m for m in self.broker.reconcile() if m["instrument"] in keys]
         unconfirmed = getattr(self.broker, "pending_unconfirmed", False)
-        self._position_mismatch = mismatches
-        if mismatches:
+        self._position_mismatch = remaining
+        if remaining:
             self._sync_ok = False
-            log.error("position mismatch remains after heal — entries PAUSED: %s", mismatches)
+            log.error("position mismatch remains after heal — entries PAUSED: %s", remaining)
         elif unconfirmed:
             self.broker.pending_unconfirmed = False
             self._sync_ok = True
@@ -546,9 +578,10 @@ class Engine:
 
     def square_off_all(self, reason: str) -> None:
         # close what actually exists on Upstox, not the app's possibly-stale idea
+        # (only for the current picks — untracked positions in other stocks are left alone)
         if self.cfg.mode == "live":
             try:
-                self.broker.seed_from_upstox()
+                self.broker.seed_from_upstox(keep=self._seed_keep())
             except Exception as exc:  # noqa: BLE001
                 log.warning("square-off: could not seed from Upstox first: %s", exc)
         for pos in self.broker.open_positions():

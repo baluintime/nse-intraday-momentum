@@ -181,14 +181,29 @@ def test_equity_option_hyphen_underlying_matches(tmp_path):
     assert [p for p in e.broker.open_positions() if p.instrument_key == "NSE_FO|BJ"]  # adopted
 
 
-def test_index_option_orphan_squared_when_no_index_runner(tmp_path):
-    # a stock-only (momentum) engine has no index runner, so an index-option
-    # orphan can't be adopted -> it is squared off
+def test_orphan_not_in_current_picks_is_skipped(tmp_path):
+    # a stock-only (momentum) engine trades RELIANCE; a NIFTY orphan is not one of
+    # the current picks -> leave it completely alone (not squared, not adopted, no pause)
     e = make_stock_engine(tmp_path, [upos("NSE_FO|NF", 75, 120.0, "NIFTY 24050 CE")])
     warm(e, up=True)
-    e.reconcile_positions()
-    assert e.api.placed and e.api.placed[0][0] == "SELL"
-    assert e.broker.open_positions() == []
+    assert e.reconcile_positions() is True   # not paused by a position we don't manage
+    assert e.api.placed == []                # nothing sold
+    assert e.broker.open_positions() == []   # nothing adopted
+
+
+def test_orphan_in_current_pick_healed_while_other_skipped(tmp_path):
+    # two orphans: RELIANCE (a current pick) is healed/adopted; NIFTY (not a pick)
+    # is skipped. Trading is not paused by the skipped one.
+    e = make_stock_engine(tmp_path, [
+        upos("NSE_FO|RILCE", 250, 55.0, "RELIANCE 3000 CE"),
+        upos("NSE_FO|NF", 75, 120.0, "NIFTY 24050 CE"),
+    ])
+    warm(e, up=True)  # bullish -> RELIANCE CE valid -> adopt
+    assert e.reconcile_positions() is True
+    keys = {p.instrument_key for p in e.broker.open_positions()}
+    assert "NSE_FO|RILCE" in keys      # RELIANCE adopted
+    assert "NSE_FO|NF" not in keys     # NIFTY left alone
+    assert e.api.placed == []          # nothing squared off
 
 
 def test_seed_labels_put_as_short(tmp_path):
